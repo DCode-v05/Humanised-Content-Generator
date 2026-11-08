@@ -12,7 +12,6 @@ import json
 import argparse
 from pathlib import Path
 
-# Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from src.model_merger import ModelMerger
@@ -49,13 +48,10 @@ def main():
     
     args = parser.parse_args()
     
-    # Setup environment
     setup_environment()
     
-    # Load configuration
     config = load_config(args.config)
     
-    # Override config with command line arguments
     if args.base_model:
         config["base_model_id"] = args.base_model
     if args.lora_path:
@@ -69,7 +65,6 @@ def main():
     print(f"🎯 LoRA adapters: {config['lora_path']}")
     print(f"💾 Output: {config['output_path']}")
     
-    # Initialize and run merger
     merger = ModelMerger(config)
     merger.merge()
     

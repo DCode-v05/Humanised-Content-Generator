@@ -13,7 +13,6 @@ import json
 import argparse
 from pathlib import Path
 
-# Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from src.text_generator import TextGenerator
@@ -65,13 +64,10 @@ def main():
     
     args = parser.parse_args()
     
-    # Setup environment (suppress setup messages for clean output)
     setup_environment(verbose=False)
     
-    # Load configuration
     config = load_config(args.config)
     
-    # Override config with command line arguments
     if args.model_path:
         config["model_path"] = args.model_path
     if args.max_words:
@@ -81,18 +77,15 @@ def main():
     if args.temperature:
         config["generation"]["temperature"] = args.temperature
     
-    # Initialize text generator
     try:
         generator = TextGenerator(config)
     except Exception as e:
         print(f"❌ Failed to initialize generator: {e}", file=sys.stderr)
         sys.exit(1)
     
-    # Generate text
     try:
         generated_text = generator.generate(args.prompt)
         
-        # Output to stdout (clean for piping/capturing)
         print(generated_text)
         
         from datetime import datetime
@@ -104,7 +97,6 @@ def main():
             f.write(f"Prompt: {args.prompt}\\n\\n")
             f.write(f"Generated Text:\\n{generated_text}")
             
-            # Write info to stderr to not pollute stdout        
     except Exception as e:
         print(f"Error generating text: {e}", file=sys.stderr)
         sys.exit(1)

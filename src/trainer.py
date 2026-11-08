@@ -28,7 +28,7 @@ class ModelTrainer:
         tok = AutoTokenizer.from_pretrained(model_id, use_fast=True)
         if tok.pad_token is None:
             tok.pad_token = tok.eos_token
-        tok.padding_side = "right"  # Important for causal LM training
+        tok.padding_side = "right"
         return tok
 
     def get_model_4bit(self, model_id: str):
@@ -74,7 +74,6 @@ class ModelTrainer:
         instr = example["instruction"]
         resp = example["response"]
         
-        # Data validation
         if not instr or not resp:
             return {"text": ""}
             
@@ -93,12 +92,11 @@ class ModelTrainer:
                 add_generation_prompt=False,
             )
             
-            # Length validation for training stability
             max_seq_length = self.config["data"]["max_seq_length"]
             if len(self.tokenizer.encode(chat_text)) <= max_seq_length:
                 return {"text": chat_text}
             else:
-                return {"text": ""}  # Skip if too long
+                return {"text": ""}
                 
         except Exception as e:
             print(f"⚠️ Warning: Skipping malformed example: {e}")
@@ -107,14 +105,12 @@ class ModelTrainer:
     def preprocess_dataset(self, dataset):
         """Preprocess dataset for training"""
         formatted = dataset.map(self.formatting_func, remove_columns=dataset.column_names)
-        # Filter out empty texts
         filtered = formatted.filter(lambda x: x["text"] and x["text"].strip())
         return filtered
 
     def train(self):
         """Run the training process"""
         
-        # Setup output directory
         output_dir = self.config["training"]["output_dir"]
         os.makedirs(output_dir, exist_ok=True)
         
@@ -133,7 +129,6 @@ class ModelTrainer:
         self.model = self.get_model_4bit(self.config["model"]["model_id"])
         self.model = self.add_lora(self.model)
         
-        # Enable gradient computation for LoRA parameters
         self.model.train()
         
         print("📝 Preprocessing datasets...")
@@ -143,7 +138,6 @@ class ModelTrainer:
         print(f"📊 Training examples: {len(train_ds_formatted)}")
         print(f"📊 Validation examples: {len(val_ds_formatted)}")
         
-        # Setup training arguments
         training_config = self.config["training"]
         training_args = TrainingArguments(
             output_dir=training_config["output_dir"],

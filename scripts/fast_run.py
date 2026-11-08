@@ -12,7 +12,6 @@ import json
 import argparse
 from pathlib import Path
 
-# Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from src.text_generator import TextGenerator
@@ -49,27 +48,20 @@ def main():
     
     args = parser.parse_args()
     
-    # Setup environment (suppress setup messages for clean output)
     setup_environment(verbose=False)
     
-    # Load configuration
     config = load_config(args.config)
     
-    # Override config with command line arguments
     if args.model_path:
         config["model_path"] = args.model_path
     
-    # Initialize text generator (will use caching)
     generator = TextGenerator(config)
     
-    # Generate text
     try:
         generated_text = generator.generate(args.prompt)
         
-        # Output to stdout (clean for piping/capturing)
         print(generated_text)
         
-        # Optionally save to file
         if args.save_output:
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -80,7 +72,6 @@ def main():
                 f.write(f"Prompt: {args.prompt}\\n\\n")
                 f.write(f"Generated Text:\\n{generated_text}")
             
-            # Write info to stderr to not pollute stdout
             print(f"Output saved to: {output_file}", file=sys.stderr)
         
     except Exception as e:

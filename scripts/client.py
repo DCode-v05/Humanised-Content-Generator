@@ -13,14 +13,11 @@ import argparse
 def generate_text(prompt, port=8765):
     """Send prompt to server and get response"""
     try:
-        # Connect to server
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(('localhost', port))
         
-        # Send prompt
         client_socket.send(prompt.encode('utf-8'))
         
-        # Receive response
         response = b''
         while True:
             chunk = client_socket.recv(4096)
@@ -43,7 +40,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Generate text
     response = generate_text(args.prompt, args.port)
     print(response)
 

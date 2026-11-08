@@ -12,7 +12,6 @@ from pathlib import Path
 def setup_environment(verbose=True):
     """Setup environment variables and directories"""
     
-    # Set HuggingFace cache directories
     cache_dir = "E:/huggingface_cache"
     temp_dir = "E:/temp_processing"
     
@@ -20,11 +19,9 @@ def setup_environment(verbose=True):
     os.environ['TRANSFORMERS_CACHE'] = f"{cache_dir}/transformers"
     os.environ['HF_DATASETS_CACHE'] = f"{cache_dir}/datasets"
     
-    # Create directories
     os.makedirs(cache_dir, exist_ok=True)
     os.makedirs(temp_dir, exist_ok=True)
     
-    # Set temp directory
     tempfile.tempdir = temp_dir
     
     if verbose:
@@ -42,16 +39,15 @@ def ensure_complete_sentence(text: str) -> str:
     
     for i in range(len(text) - 1, -1, -1):
         if text[i] in sentence_endings:
-            # Check if this is likely end of sentence (not abbreviation)
             if i < len(text) - 1 and text[i + 1] in [' ', '\\n', '\\t']:
                 last_complete = i
                 break
-            elif i == len(text) - 1:  # End of text
+            elif i == len(text) - 1:
                 last_complete = i
                 break
     
     if last_complete == -1:
-        return text  # No sentence ending found, return as is
+        return text
     
     return text[:last_complete + 1].strip()
 

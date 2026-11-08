@@ -16,10 +16,8 @@ Usage example:
 """
 
 import sys
-# Add custom package path for trl if installed in custom location
 sys.path.insert(0, r'E:\python_user\lib\site-packages')
 
-# Set HuggingFace cache directory to E: drive (has more space)
 import os
 os.environ['HF_HOME'] = r'E:\huggingface_cache'
 os.environ['TRANSFORMERS_CACHE'] = r'E:\huggingface_cache\transformers'
@@ -44,26 +42,24 @@ def get_tokenizer(model_id: str):
     tok = AutoTokenizer.from_pretrained(model_id, use_fast=True)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
-    # Critical for training stability
-    tok.padding_side = "right"  # Important for causal LM training
+    tok.padding_side = "right"
     return tok
 
 
 def get_model_4bit(model_id: str):
-    # Proper 4-bit quantization configuration
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16,
-        llm_int8_enable_fp32_cpu_offload=True  # Enable CPU offloading
+        llm_int8_enable_fp32_cpu_offload=True
     )
     
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         quantization_config=bnb_config,
         device_map="auto",
-        dtype=torch.bfloat16,  # Fixed: use dtype instead of torch_dtype
+        dtype=torch.bfloat16,
         trust_remote_code=True,
     )
     return model
@@ -160,23 +156,18 @@ def main():
     tokenizer = get_tokenizer(args.model_id)
 
     print("🧠 Loading 4-bit base model...")
-    # Clear GPU cache before loading model
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     
     model = get_model_4bit(args.model_id)
     model = add_lora(model)
     
-    # Enable gradient computation for LoRA parameters
     model.train()
 
-    # Turn (instruction, response) → chat-formatted text using model's template
     def formatting_func(example):
-        # Handle single example (not batch)
         instr = example["instruction"]
         resp = example["response"]
         
-        # Data validation
         if not instr or not resp:
             return {"text": ""}
             
@@ -195,11 +186,10 @@ def main():
                 add_generation_prompt=False,
             )
             
-            # Length validation for training stability
             if len(tokenizer.encode(chat_text)) <= args.max_seq_length:
                 return {"text": chat_text}
             else:
-                return {"text": ""}  # Skip if too long
+                return {"text": ""}
                 
         except Exception as e:
             print(f"⚠️ Warning: Skipping malformed example: {e}")
@@ -215,26 +205,23 @@ def main():
         lr_scheduler_type="cosine",
         warmup_ratio=0.03,
         logging_steps=20,
-        eval_strategy="steps",  # Fixed: was evaluation_strategy
+        eval_strategy="steps",
         eval_steps=200,
         save_strategy="steps",
         save_steps=200,
         save_total_limit=3,
         bf16=torch.cuda.is_available(),
         gradient_checkpointing=True,
-        max_grad_norm=1.0,  # Gradient clipping for stability
-        dataloader_num_workers=0,  # Avoid multiprocessing issues
-        remove_unused_columns=False,  # Keep all columns for formatting_func
+        max_grad_norm=1.0,
+        dataloader_num_workers=0,
+        remove_unused_columns=False,
         report_to="none",
     )
 
-    # Preprocess datasets to ensure compatibility
     print("📝 Preprocessing datasets...")
     
-    # Apply formatting and filter out empty results
     def preprocess_dataset(dataset):
         formatted = dataset.map(formatting_func, remove_columns=dataset.column_names)
-        # Filter out empty texts
         filtered = formatted.filter(lambda x: x["text"] and x["text"].strip())
         return filtered
     
@@ -245,7 +232,6 @@ def main():
     print(f"📊 Validation examples: {len(val_ds_formatted)}")
 
     print("🚀 Starting SFTTrainer...")
-    # Use minimal parameters for your specific TRL version
     trainer = SFTTrainer(
         model=model,
         train_dataset=train_ds_formatted,

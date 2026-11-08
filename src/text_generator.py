@@ -11,7 +11,6 @@ import pickle
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from .utils import count_words, ensure_complete_sentence
 
-# Global model cache
 _model_cache = {}
 _cache_file = "models/.model_cache.pkl"
 
@@ -26,7 +25,6 @@ class TextGenerator:
         """Load the fine-tuned model with caching"""
         model_path = self.config["model_path"]
         
-        # Check if model is already in memory cache
         if model_path in _model_cache:
             self.model = _model_cache[model_path]['model']
             self.tokenizer = _model_cache[model_path]['tokenizer']
@@ -46,7 +44,6 @@ class TextGenerator:
             )
             
             
-            # Cache the model in memory
             _model_cache[model_path] = {
                 'model': self.model,
                 'tokenizer': self.tokenizer
@@ -61,13 +58,9 @@ class TextGenerator:
         
         gen_config = self.config["generation"]
 
-        # -----------------------------------------
-        # 1. FIXED TARGET WORD COUNT
-        # -----------------------------------------
         target_words = (2300, 2700)
-        max_tokens = int(target_words[1] * 1.6)  # safe margin
+        max_tokens = int(target_words[1] * 1.6)
 
-        # Format chat template
         messages = [{"role": "user", "content": prompt}]
         formatted_prompt = self.tokenizer.apply_chat_template(
             messages,
@@ -75,12 +68,8 @@ class TextGenerator:
             add_generation_prompt=True
         )
 
-        # Tokenize
         inputs = self.tokenizer(formatted_prompt, return_tensors="pt").to(self.model.device)
 
-        # -----------------------------------------
-        # 2. INITIAL GENERATION
-        #-----------------------------------------
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
@@ -97,15 +86,11 @@ class TextGenerator:
                 length_penalty=1.0
             )
 
-        # Decode response (exclude input prompt)
         full_response = self.tokenizer.decode(
             outputs[0][inputs['input_ids'].shape[1]:],
             skip_special_tokens=True
         ).strip()
 
-        # -----------------------------------------
-        # 3. CLEAN REPETITION LINES
-        # -----------------------------------------
         lines = full_response.split('\n')
         cleaned_lines = []
         seen_lines = set()
@@ -120,22 +105,16 @@ class TextGenerator:
 
         full_response = '\n'.join(cleaned_lines)
 
-        # -----------------------------------------
-        # 4. ENFORCE FIXED WORD COUNT RANGE
-        # -----------------------------------------
         word_count = count_words(full_response)
 
-        # Case 1: Already within target range
         if target_words[0] <= word_count <= target_words[1]:
             return ensure_complete_sentence(full_response).strip()
 
-        # Case 2: Too long → trim
         if word_count > target_words[1]:
             words = full_response.split()
             trimmed = ' '.join(words[:target_words[1]])
             return ensure_complete_sentence(trimmed).strip()
 
-        # Case 3: Too short → regenerate up to 2 times
         attempts = 0
         while word_count < target_words[0] and attempts < 2:
             attempts += 1
@@ -161,7 +140,6 @@ class TextGenerator:
 
             word_count = count_words(full_response)
 
-        # Case 4: If STILL short → force continuation/padding
         if word_count < target_words[0]:
             continuation_prompt = (
                 full_response +
@@ -186,10 +164,8 @@ class TextGenerator:
 
             full_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
 
-            # Final word count check & trim if needed
             words = full_response.split()
             if len(words) > target_words[1]:
                 full_response = ' '.join(words[:target_words[1]])
 
-        # Final clean return
         return ensure_complete_sentence(full_response).strip()

@@ -13,7 +13,6 @@ import socket
 import threading
 from pathlib import Path
 
-# Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from src.text_generator import TextGenerator
@@ -25,7 +24,6 @@ class ModelServer:
         self.generator = None
         self.running = False
         
-        # Load config and initialize generator
         with open(config_path, 'r') as f:
             config = json.load(f)
         
@@ -37,17 +35,14 @@ class ModelServer:
     def handle_client(self, client_socket):
         """Handle client request"""
         try:
-            # Receive prompt
             prompt = client_socket.recv(4096).decode('utf-8')
             if not prompt:
                 return
                 
             print(f"📝 Generating response for: {prompt[:50]}...")
             
-            # Generate response
             response = self.generator.generate(prompt)
             
-            # Send response
             client_socket.send(response.encode('utf-8'))
             
         except Exception as e:
